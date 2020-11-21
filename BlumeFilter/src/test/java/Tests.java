@@ -1,119 +1,155 @@
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
+import java.nio.charset.StandardCharsets;
 import java.util.*;
+import java.util.function.Function;
 
 public class Tests {
 
     @Test
-    public void test(){
-        BlumeElement[] right = new BlumeElement[]{
-                new ElementImpl("gobgibjif"),
-                new ElementImpl("lklmglbk"),
-                new ElementImpl("gkb"),
-                new ElementImpl("lkbmflkmb"),
-                new ElementImpl("ilwsakxvxn"),
-                new ElementImpl("svcmvmvmvm"),
-                new ElementImpl("[ypotopyo]"),
-                new ElementImpl("mvvnttiil"),
-                new ElementImpl("kjklkghjoi"),
-                new ElementImpl("iiyuurprii"),
-                new ElementImpl("mmvnbb,"),
-                new ElementImpl("lgklfkglkoobioyrlkmg.fm"),
-                new ElementImpl(".,zxzvnoylilgknb"),
-                new ElementImpl("glkbjoyle/tlbm"),
-                new ElementImpl("l.c,vm.gkbm. "),
-                new ElementImpl("kgk    lgkg "),
-                new ElementImpl("fkbokv lg"),
-                new ElementImpl("pogp 3409h "),
-                new ElementImpl("44m ok olk3"),
-                new ElementImpl("v kl.,.x,nck "),
-                new ElementImpl("aswszx/lhp"),
-                new ElementImpl("kfjon599bn xg"),
-                new ElementImpl("03994086034-4"),
-                new ElementImpl("p3 kjgn oigirgoi  gkkg"),
-                new ElementImpl("fiv 04ti04"),
-                new ElementImpl("otib04 050 i"),
-                new ElementImpl("gkj kfj nv           bkvj kvj vj  vv j555555"),
-                new ElementImpl("gobgibjif"),
-        };
-        BlumeElement[] wrong = new BlumeElement[]{
-                new ElementImpl("ijiri334ii4i"),
-                new ElementImpl("3rojkbkjfb f k b"),
-                new ElementImpl("gkjogfof "),
-                new ElementImpl("gffkk bkbk bk  b"),
-                new ElementImpl(" kv v  km "),
-                new ElementImpl("vv kf og k k"),
-                new ElementImpl("[fk kfp0000]"),
-                new ElementImpl("k, fk k pf kok jk "),
-                new ElementImpl("vk fo ofirio409090 "),
-                new ElementImpl("2pf-2vpkf k vl ok "),
-                new ElementImpl("o rn54nojr uf oj ,"),
-                new ElementImpl("o orn ogn og o k  lm km.fm"),
-                new ElementImpl("., km mn  knw lkfvn i  "),
-                new ElementImpl("gobgibji"),
-                new ElementImpl("gobgibjif3")
-        };
-        int inputSize = right.length+wrong.length;
-        BlumeElement[] testInputs = new BlumeElement[inputSize];
-        for (int i = 0; i < inputSize; i++) {
-            if (new Random().nextBoolean() && i < wrong.length) {
-                testInputs[i] = wrong[i];
-            } else if (i < right.length) {
-                testInputs[i] = right[i];
+    public void testClear() {
+        BlumeFilterSet<BlumeElement> filterSet = initBlumeFilterSet(10, 1);
+        filterSet.clear();
+        Assertions.assertTrue(filterSet.isEmpty());
+    }
+
+    @Test
+    public void testEquals() {
+        Set<BlumeElement> elements = generateObjects(100);
+        BlumeFilterSet<BlumeElement> filterSet1 = new BlumeFilterSet<>(elements, 100);
+        BlumeFilterSet<BlumeElement> filterSet2 = new BlumeFilterSet<>(elements, 100);
+        BlumeFilterSet<BlumeElement> filterSet3 = initBlumeFilterSet(100, 100);
+        Assertions.assertEquals(filterSet1, filterSet2);
+        Assertions.assertNotEquals(filterSet1, filterSet3);
+    }
+
+    @Test
+    public void testSize() {
+        BlumeFilterSet<BlumeElement> filterSet = new BlumeFilterSet<>(100);
+        Assertions.assertEquals(0, filterSet.size());
+        filterSet.add(new BlumeElement.ElementImpl("element"));
+        Assertions.assertEquals(1, filterSet.size());
+        filterSet.add(new BlumeElement.ElementImpl("element2"));
+        Assertions.assertEquals(2, filterSet.size());
+    }
+
+    @Test
+    public void testIterator() {
+        Set<BlumeElement> elements = generateObjects(100);
+        BlumeFilterSet<BlumeElement> filterSet = new BlumeFilterSet<>(elements, 1000);
+        Iterator it = filterSet.iterator();
+        ArrayList<BlumeElement> test = new ArrayList<>();
+        while (it.hasNext()) {
+            test.add((BlumeElement) it.next());
+        }
+        Assertions.assertTrue(test.containsAll(elements));
+    }
+
+    @Test
+    public void testAddContains() {
+        int rightInputSize = 100;
+        int wrongInputSize = 100;
+        int maxMembers = 1000;
+        double error = 0.01;
+
+        Set<BlumeElement> testSet = generateObjects(rightInputSize, be -> true);
+        Set<BlumeElement> wrongSet = generateObjects(wrongInputSize, be -> !testSet.contains(be));
+
+        BlumeFilterSet<BlumeElement> filterSet = new BlumeFilterSet<>(maxMembers, error);
+
+        for (BlumeElement element : testSet) {
+            filterSet.add(element);
+        }
+
+        double wrongContainsCounter = 0;
+        double wrongNotContainsCounter = 0;
+        double rightContainsCounter = 0;
+        double rightNotContainsCounter = 0;
+
+        for (BlumeElement input : testSet) {
+            if (filterSet.contains(input)) {
+                rightContainsCounter++;
+            } else {
+                wrongNotContainsCounter++;
             }
         }
-        BlumeFilterSet<BlumeElement> filterSet = new BlumeFilterSet<>(10000000);
-        filterSet.addAll(Arrays.asList(right));
-        for (BlumeElement testInput : testInputs) {
-            boolean isRight = false;
-            for (BlumeElement element : right) {
-                if (element == testInput) {
-                    isRight = true;
-                    break;
-                }
+        for (BlumeElement input : wrongSet) {
+            if (filterSet.contains(input)) {
+                wrongContainsCounter++;
+            } else {
+                rightNotContainsCounter++;
             }
-            Assertions.assertEquals(filterSet.contains(testInput), isRight);
         }
+
+        System.out.println("rightContainsCounter = " + rightContainsCounter);
+        System.out.println("rightNotContainsCounter = " + rightNotContainsCounter);
+        System.out.println("wrongContainsCounter = " + wrongContainsCounter);
+        System.out.println("wrongNotContainsCounter = " + wrongNotContainsCounter);
+        System.out.println();
+        double rightContainsPersent = rightContainsCounter / rightInputSize * 100;
+        double rightNotContainsPersent = rightNotContainsCounter / wrongInputSize * 100;
+        double wrongContainsPersent = 100 - rightNotContainsPersent;
+        double wrongNotContainsPersent = 100 - rightContainsPersent;
+        System.out.println("rightContainsPersent = " + rightContainsPersent + "%");
+        System.out.println("rightNotContainsPersent = " + rightNotContainsPersent + "%");
+        System.out.println("wrongContainsPersent = " + wrongContainsPersent + "%");
+        System.out.println("wrongNotContainsPersent = " + wrongNotContainsPersent + "%");
+
+        Assertions.assertTrue(wrongContainsPersent <= 2);
+    }
+
+    @Test
+    public void testAddContainsAll() {
+        Set<BlumeElement> elements = generateObjects(100);
+        BlumeFilterSet<BlumeElement> filterSet = new BlumeFilterSet<>(100);
+        filterSet.addAll(elements);
+        Assertions.assertTrue(filterSet.containsAll(elements));
     }
 
     @Test
     public void testRemove() {
-        ElementImpl element = new ElementImpl("qwerty");
-        BlumeFilterSet<ElementImpl> blumeFilterSet = new BlumeFilterSet<>(1000000);
+        BlumeElement element = new BlumeElement.ElementImpl("qwerty");
+        BlumeFilterSet<BlumeElement> blumeFilterSet = new BlumeFilterSet<>(1000);
         blumeFilterSet.add(element);
         Assertions.assertTrue(blumeFilterSet.contains(element));
         blumeFilterSet.remove(element);
         Assertions.assertFalse(blumeFilterSet.contains(element));
     }
 
-    private static class ElementImpl implements BlumeElement {
-        String text;
-        public ElementImpl(String text) {
-            this.text = text;
-        }
-        @Override
-        public int hashCode() {
-            return Objects.hash(text);
-        }
-        @Override
-        public String toString() {
-            return text;
-        }
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-            ElementImpl element = (ElementImpl) o;
-            return Objects.equals(text, element.text);
-        }
-        @Override
-        public HashFunction[] hash() {
-            return new HashFunction[]{
-                    ()->hashCode()*32,
-                    ()->hashCode()*64,
-                    ()->hashCode()*16
-            };
-        }
+    @Test
+    public void testRemoveAll() {
+        Set<BlumeElement> elements = generateObjects(100);
+        BlumeFilterSet<BlumeElement> blumeFilterSet = new BlumeFilterSet<>(elements, 100);
+        Assertions.assertFalse(blumeFilterSet.isEmpty());
+        blumeFilterSet.removeAll(elements);
+        Assertions.assertTrue(blumeFilterSet.isEmpty());
     }
+
+    public Set<BlumeElement> generateObjects(int size, Function<BlumeElement, Boolean> condition) {
+        Set<BlumeElement> blumeElements = new HashSet<>();
+        for (int i = 0; i < size; i++) {
+            BlumeElement element = new BlumeElement.ElementImpl(generateString());
+            if (condition.apply(element)) {
+                blumeElements.add(element);
+            }
+        }
+        return blumeElements;
+    }
+
+    public Set<BlumeElement> generateObjects(int size) {
+        return generateObjects(size, c -> true);
+    }
+
+    BlumeFilterSet<BlumeElement> initBlumeFilterSet(int maxMembers, int members) {
+        return new BlumeFilterSet<>(generateObjects(members, c -> true), maxMembers);
+    }
+
+    public String generateString() {
+        Random r = new Random();
+        byte[] bytes = new byte[r.nextInt(1000000)];
+        r.nextBytes(bytes);
+        return new String(bytes, StandardCharsets.UTF_8);
+    }
+
 }

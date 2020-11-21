@@ -1,29 +1,74 @@
 import java.util.*;
 
-public class BlumeFilterSet<T extends BlumeElement> implements Set<T> {
-    private int capacity;
+import static java.lang.Math.*;
+
+public class BlumeFilterSet<T extends BlumeElement> extends AbstractSet<T> {
+    private final int capacity;
+    private int size;
     private boolean[] array;
     private boolean[] deletedArray;
-    private int size;
+    private BlumeElement[] elements;
 
     BlumeFilterSet(int capacity) {
         this.capacity = capacity;
-        array = new boolean[capacity];
-        deletedArray = new boolean[capacity];
+        array = new boolean[this.capacity];
+        deletedArray = new boolean[this.capacity];
+        elements = new BlumeElement[capacity];
         size = 0;
     }
 
-    public int size() {
-        return size;
+    BlumeFilterSet(int maxMembers, double errorProbability) {
+        this(optimalCapacity(maxMembers, errorProbability));
     }
 
-    public boolean isEmpty() {
-        return array.length > 0;
+    BlumeFilterSet(Collection<T> collection, int capacity) {
+        this(capacity);
+        addAll(collection);
+    }
+
+    private static int optimalCapacity(int maxMembers, double errorProbability) {
+        return (int) -(maxMembers * log(errorProbability) / pow(log(2.0), 2));
+    }
+
+    public boolean add(T t) {
+        if (t == null) return false;
+        if (size < capacity) elements[size] = t;
+        setElement(t, true);
+        size++;
+        return true;
+    }
+
+    public boolean remove(Object o) {
+        if (o == null) return false;
+        setElement((BlumeElement) o, false);
+        if (size > 0) size--;
+        return true;
     }
 
     public boolean contains(Object o) {
         BlumeElement element = (BlumeElement) o;
         return hashedContains(array, element) && !hashedContains(deletedArray, element);
+    }
+
+    public boolean addAll(Collection<? extends T> c) {
+        for (T el : c) {
+            add(el);
+        }
+        return true;
+    }
+
+    public boolean removeAll(Collection<?> c) {
+        for (Object o : c) {
+            remove(o);
+        }
+        return true;
+    }
+
+    public boolean containsAll(Collection<?> c) {
+        for (Object o : c) {
+            if (!contains(o)) return false;
+        }
+        return true;
     }
 
     private boolean hashedContains(boolean[] array, BlumeElement element) {
@@ -33,44 +78,13 @@ public class BlumeFilterSet<T extends BlumeElement> implements Set<T> {
         return true;
     }
 
-    public Iterator<T> iterator() {
-        return new Iterator<T>() {
-            @Override
-            public boolean hasNext() {
-                return false;
-            }
-
-            @Override
-            public T next() {
-                return null;
-            }
-        };
-    }
-
-    public Object[] toArray() {
-        return new Object[0];
-    }
-
-    public <T1> T1[] toArray(T1[] a) {
-        return null;
-    }
-
-    public boolean add(T t) {
-        if (t == null) return false;
-        setElement(t, true);
-        size++;
-        return true;
-    }
-
-    public boolean remove(Object o) {
-        if (o == null) return false;
-        setElement((BlumeElement) o, false);
-        size--;
-        return true;
-    }
-
     private int getIndex(BlumeElement.HashFunction hashFunction){
-        return minimize(hashFunction.hash());
+        return optimize(hashFunction.hash());
+    }
+
+    private int optimize(int hash) {
+        hash = Math.abs(hash);
+        return hash%capacity;
     }
 
     private boolean[] getElementValues(boolean[] array, BlumeElement element){
@@ -91,42 +105,40 @@ public class BlumeFilterSet<T extends BlumeElement> implements Set<T> {
         }
     }
 
-    public boolean containsAll(Collection<?> c) {
-        for (Object o : c) {
-            if (!contains(o)) return false;
-        }
-        return true;
+    @Override
+    public Iterator<T> iterator() {
+        return new Iterator<T>() {
+            int i = 0;
+            @Override
+            public boolean hasNext() {
+                return i < size;
+            }
+
+            @Override
+            public T next() {
+                BlumeElement e = elements[i];
+                i++;
+                return (T)e;
+            }
+        };
     }
 
-    public boolean addAll(Collection<? extends T> c) {
-        for (T el : c) {
-            add(el);
-        }
-        return true;
+    @Override
+    public int size() {
+        return size;
     }
 
-    public boolean retainAll(Collection<?> c) {
-        return false;
-    }
-
-    public boolean removeAll(Collection<?> c) {
-        for (Object o : c) {
-            remove(o);
-        }
-        return true;
-    }
-
+    @Override
     public void clear() {
         array = new boolean[capacity];
         deletedArray = new boolean[capacity];
+        elements = new BlumeElement[capacity];
+        size = 0;
     }
 
-    private int minimize(int hash) {
-        hash = Math.abs(hash);
-        while (hash > capacity) {
-            hash /= 10;
-        }
-        return hash;
+    @Override
+    public boolean isEmpty() {
+        return size <= 0;
     }
 
     @Override
