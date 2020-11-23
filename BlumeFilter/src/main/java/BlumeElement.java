@@ -1,15 +1,16 @@
 import java.util.Objects;
 
 public interface BlumeElement {
-    HashFunction[] hash();
-    interface HashFunction{
+    HashFunction[] hashFamily();
+
+    interface HashFunction {
         int hash();
     }
 
-    abstract class AbstractElement implements BlumeElement{
+    abstract class AbstractElement implements BlumeElement {
         private Object object;
 
-        AbstractElement(Object object) {
+        public AbstractElement(Object object) {
             this.object = object;
         }
 
@@ -41,17 +42,17 @@ public interface BlumeElement {
     }
 
     class ElementImpl extends AbstractElement {
-        ElementImpl(Object object) {
+        public ElementImpl(Object object) {
             super(object);
         }
 
         @Override
-        public HashFunction[] hash() {
+        public HashFunction[] hashFamily() {
             int[] h = new int[]{hashCode()};
             return new HashFunction[]{
-                    ()->h[0]%17*37+h[0]/3,
-                    ()->h[0]%37+h[0]*h[0]/64,
-                    ()->h[0]%2+32*17*h[0]+256,
+                    () -> h[0] % 17 * 37 + h[0] / 3,
+                    () -> h[0] % 37 + h[0] * h[0] / 64,
+                    () -> h[0] % 2 + 32 * 17 * h[0] + 256,
             };
         }
     }

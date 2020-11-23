@@ -6,6 +6,8 @@ import java.util.*;
 import java.util.function.Function;
 
 public class Tests {
+    private static final Set<BlumeElement> testInput = generateObjects(100);
+    private static final Set<BlumeElement> testWrongInput = generateObjects(100, be -> !testInput.contains(be));
 
     @Test
     public void testClear() {
@@ -16,9 +18,8 @@ public class Tests {
 
     @Test
     public void testEquals() {
-        Set<BlumeElement> elements = generateObjects(100);
-        BlumeFilterSet<BlumeElement> filterSet1 = new BlumeFilterSet<>(elements, 100);
-        BlumeFilterSet<BlumeElement> filterSet2 = new BlumeFilterSet<>(elements, 100);
+        BlumeFilterSet<BlumeElement> filterSet1 = new BlumeFilterSet<>(testInput, 100);
+        BlumeFilterSet<BlumeElement> filterSet2 = new BlumeFilterSet<>(testInput, 100);
         BlumeFilterSet<BlumeElement> filterSet3 = initBlumeFilterSet(100, 100);
         Assertions.assertEquals(filterSet1, filterSet2);
         Assertions.assertNotEquals(filterSet1, filterSet3);
@@ -36,75 +37,64 @@ public class Tests {
 
     @Test
     public void testIterator() {
-        Set<BlumeElement> elements = generateObjects(100);
-        BlumeFilterSet<BlumeElement> filterSet = new BlumeFilterSet<>(elements, 1000);
-        Iterator it = filterSet.iterator();
+        BlumeFilterSet<BlumeElement> filterSet = new BlumeFilterSet<>(testInput, 500);
+        Iterator<BlumeElement> it = filterSet.iterator();
         ArrayList<BlumeElement> test = new ArrayList<>();
         while (it.hasNext()) {
-            test.add((BlumeElement) it.next());
+            test.add(it.next());
         }
-        Assertions.assertTrue(test.containsAll(elements));
+        Assertions.assertTrue(test.containsAll(testInput));
+    }
+
+    public void testAddContains(Set<BlumeElement> testInput, Set<BlumeElement> testWrongInput, int maxMembers, double error) {
+        int rightInputSize = testInput.size();
+        int wrongInputSize = testWrongInput.size();
+
+        BlumeFilterSet<BlumeElement> filterSet = new BlumeFilterSet<>(maxMembers, error);
+
+        for (BlumeElement element : testInput) {
+            filterSet.add(element);
+        }
+
+        double rightContainsCounter = 0;
+        double rightNotContainsCounter = 0;
+
+        for (BlumeElement input : testInput) {
+            if (filterSet.contains(input)) {
+                rightContainsCounter++;
+            }
+        }
+        for (BlumeElement input : testWrongInput) {
+            if (!filterSet.contains(input)) {
+                rightNotContainsCounter++;
+            }
+        }
+        double rightContainsPercent = rightContainsCounter / rightInputSize * 100;
+        double rightNotContainsPercent = rightNotContainsCounter / wrongInputSize * 100;
+        double errorPercent = 100 - rightNotContainsPercent;
+        double wrongNotContainsPercent = 100 - rightContainsPercent;
+        Assertions.assertEquals(0, wrongNotContainsPercent);
+        Assertions.assertTrue(errorPercent / 100 <= error*2);
     }
 
     @Test
     public void testAddContains() {
-        int rightInputSize = 100;
-        int wrongInputSize = 100;
-        int maxMembers = 1000;
+        int rightInputSize = 200;
+        int wrongInputSize = 200;
+        int maxMembers = 200;
         double error = 0.01;
 
-        Set<BlumeElement> testSet = generateObjects(rightInputSize, be -> true);
-        Set<BlumeElement> wrongSet = generateObjects(wrongInputSize, be -> !testSet.contains(be));
+        Set<BlumeElement> testInput = generateObjects(rightInputSize);
+        Set<BlumeElement> testWrongInput = generateObjects(wrongInputSize, element -> !testInput.contains(element));
 
-        BlumeFilterSet<BlumeElement> filterSet = new BlumeFilterSet<>(maxMembers, error);
-
-        for (BlumeElement element : testSet) {
-            filterSet.add(element);
-        }
-
-        double wrongContainsCounter = 0;
-        double wrongNotContainsCounter = 0;
-        double rightContainsCounter = 0;
-        double rightNotContainsCounter = 0;
-
-        for (BlumeElement input : testSet) {
-            if (filterSet.contains(input)) {
-                rightContainsCounter++;
-            } else {
-                wrongNotContainsCounter++;
-            }
-        }
-        for (BlumeElement input : wrongSet) {
-            if (filterSet.contains(input)) {
-                wrongContainsCounter++;
-            } else {
-                rightNotContainsCounter++;
-            }
-        }
-
-        System.out.println("rightContainsCounter = " + rightContainsCounter);
-        System.out.println("rightNotContainsCounter = " + rightNotContainsCounter);
-        System.out.println("wrongContainsCounter = " + wrongContainsCounter);
-        System.out.println("wrongNotContainsCounter = " + wrongNotContainsCounter);
-        System.out.println();
-        double rightContainsPersent = rightContainsCounter / rightInputSize * 100;
-        double rightNotContainsPersent = rightNotContainsCounter / wrongInputSize * 100;
-        double wrongContainsPersent = 100 - rightNotContainsPersent;
-        double wrongNotContainsPersent = 100 - rightContainsPersent;
-        System.out.println("rightContainsPersent = " + rightContainsPersent + "%");
-        System.out.println("rightNotContainsPersent = " + rightNotContainsPersent + "%");
-        System.out.println("wrongContainsPersent = " + wrongContainsPersent + "%");
-        System.out.println("wrongNotContainsPersent = " + wrongNotContainsPersent + "%");
-
-        Assertions.assertTrue(wrongContainsPersent <= 2);
+        testAddContains(testInput, testWrongInput, maxMembers, error);
     }
 
     @Test
     public void testAddContainsAll() {
-        Set<BlumeElement> elements = generateObjects(100);
         BlumeFilterSet<BlumeElement> filterSet = new BlumeFilterSet<>(100);
-        filterSet.addAll(elements);
-        Assertions.assertTrue(filterSet.containsAll(elements));
+        filterSet.addAll(testInput);
+        Assertions.assertTrue(filterSet.containsAll(testInput));
     }
 
     @Test
@@ -119,14 +109,35 @@ public class Tests {
 
     @Test
     public void testRemoveAll() {
-        Set<BlumeElement> elements = generateObjects(100);
-        BlumeFilterSet<BlumeElement> blumeFilterSet = new BlumeFilterSet<>(elements, 100);
+        BlumeFilterSet<BlumeElement> blumeFilterSet = new BlumeFilterSet<>(testInput, 100);
         Assertions.assertFalse(blumeFilterSet.isEmpty());
-        blumeFilterSet.removeAll(elements);
+        blumeFilterSet.removeAll(testInput);
         Assertions.assertTrue(blumeFilterSet.isEmpty());
     }
 
-    public Set<BlumeElement> generateObjects(int size, Function<BlumeElement, Boolean> condition) {
+    @Test
+    public void testAddContainsWithTimeCheck() {
+        Set<BlumeElement> input = generateObjects(1000);
+        BlumeFilterSet<BlumeElement> filterSet = new BlumeFilterSet<>(1000, 0.01);
+        ArrayList<BlumeElement> arrayList = new ArrayList<>(input);
+        filterSet.addAll(input);
+
+        long timer1 = System.currentTimeMillis();
+
+        arrayList.containsAll(testInput);
+        arrayList.containsAll(testWrongInput);
+        timer1 = System.currentTimeMillis() - timer1;
+
+        long timer2 = System.currentTimeMillis();
+
+        filterSet.containsAll(testInput);
+        filterSet.containsAll(testWrongInput);
+        timer2 = System.currentTimeMillis() - timer2;
+
+        Assertions.assertTrue(timer1 > timer2);
+    }
+
+    public static Set<BlumeElement> generateObjects(int size, Function<BlumeElement, Boolean> condition) {
         Set<BlumeElement> blumeElements = new HashSet<>();
         for (int i = 0; i < size; i++) {
             BlumeElement element = new BlumeElement.ElementImpl(generateString());
@@ -137,19 +148,18 @@ public class Tests {
         return blumeElements;
     }
 
-    public Set<BlumeElement> generateObjects(int size) {
+    public static Set<BlumeElement> generateObjects(int size) {
         return generateObjects(size, c -> true);
     }
 
-    BlumeFilterSet<BlumeElement> initBlumeFilterSet(int maxMembers, int members) {
-        return new BlumeFilterSet<>(generateObjects(members, c -> true), maxMembers);
-    }
-
-    public String generateString() {
+    public static String generateString() {
         Random r = new Random();
         byte[] bytes = new byte[r.nextInt(1000000)];
         r.nextBytes(bytes);
         return new String(bytes, StandardCharsets.UTF_8);
     }
 
+    BlumeFilterSet<BlumeElement> initBlumeFilterSet(int maxMembers, int members) {
+        return new BlumeFilterSet<>(generateObjects(members, c -> true), maxMembers);
+    }
 }
